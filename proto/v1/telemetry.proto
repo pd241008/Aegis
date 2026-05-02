@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package telemetry.v1;
+
+option go_package = "github.com/yourusername/aegis/agent/pkg/api/v1;telemetryv1";
+
+service TelemetryService {
+  rpc StreamMetrics (stream MetricBatch) returns (Ack) {}
+}
+
+message MetricBatch {
+  string agent_id = 1;
+  int64 timestamp = 2;
+  double cpu_usage = 3;
+  double memory_usage = 4;
+}
+
+message Ack {
+  bool success = 1;
+}
+
