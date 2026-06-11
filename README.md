@@ -55,3 +55,10 @@ For the full engineering proposal, see [docs/architecture.md](docs/architecture.
 
 ## ⚖️ License
 MIT © 2026 Aegis Team
+
+
+## 🎯 Project Roadmap
+- [x] **Phase 1**: Distributed Cluster & Agent Topology Scaffold.
+- [x] **Phase 2**: Core Telemetry Infrastructure & Protobufs.
+- [ ] **Phase 3**: Centralized API & Microservices Integration.
+- [ ] **Phase 4**: Frontend Dashboard Implementation.

@@ -1,0 +1,49 @@
+2026.05.07 18:01:50 INFO  Started: Metals version 1.6.7 in folders '/root/workspace/workspace/03-Code/Projects/Legacy/Aegis' for client Visual Studio Code 1.119.0.[0m
+2026.05.07 18:01:51 INFO  time: initialize in 0.18s[0m
+2026.05.07 18:01:50 INFO  Memory monitor started[0m
+May 07, 2026 6:01:52 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+2026.05.07 18:01:54 WARN  Using H2 2.4.240 which is newer than the version Flyway has been verified with. The latest verified version of H2 is 2.3.232.[0m
+May 07, 2026 6:02:00 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+2026.05.07 18:02:10 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/build.sbt. Using presentation compiler with project's scala-library version: 3.3.7[0m
+2026.05.07 18:02:16 WARN  no build target for: /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/build.sbt[0m
+May 07, 2026 6:02:16 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 3
+2026.05.07 18:02:16 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/build.sbt. Using presentation compiler with project's scala-library version: 3.3.7[0m
+May 07, 2026 6:02:16 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 6
+May 07, 2026 6:02:16 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 5
+May 07, 2026 6:02:16 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 4
+2026.05.07 18:02:16 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/build.sbt. Using presentation compiler with project's scala-library version: 3.3.7[0m
+2026.05.07 18:02:16 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/src/main/scala/com/aegis/cluster/Main.scala. Using presentation compiler with project's scala-library version: 3.3.7[0m
+May 07, 2026 6:02:16 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 10
+2026.05.07 18:02:16 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/src/main/scala/com/aegis/cluster/Main.scala. Using presentation compiler with project's scala-library version: 3.3.7[0m
+May 07, 2026 6:02:17 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 12
+May 07, 2026 6:02:17 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 11
+2026.05.07 18:02:16 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/src/main/scala/com/aegis/cluster/Main.scala. Using presentation compiler with project's scala-library version: 3.3.7[0m
+2026.05.07 18:02:18 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/src/main/scala/com/aegis/cluster/Main.scala. Using presentation compiler with project's scala-library version: 3.3.7[0m
+2026.05.07 18:02:18 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/src/main/scala/com/aegis/cluster/Main.scala. Using presentation compiler with project's scala-library version: 3.3.7[0m
+2026.05.07 18:02:22 INFO  no build target found for /root/workspace/workspace/03-Code/Projects/Legacy/Aegis/cluster/src/main/scala/com/aegis/cluster/Main.scala. Using presentation compiler with project's scala-library version: 3.3.7[0m
+2026.05.07 18:02:24 INFO  Shutting down server[0m
+2026.05.07 18:02:24 INFO  Memory monitor stopped[0m
+2026.05.07 18:02:24 INFO  shutting down Metals[0m
+2026.05.07 18:02:24 INFO  Exiting server[0m
+2026.05.07 18:02:24 ERROR Unexpected error initializing server: 
+org.eclipse.lsp4j.jsonrpc.ResponseErrorException: Request window/showMessageRequest failed with message: Canceled
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleResponse(RemoteEndpoint.java:214)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:198)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.lang.Thread.run(Thread.java:840)
+[0m
