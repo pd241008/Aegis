@@ -1,1 +1,34 @@
+# Local progress tracking
+docs/progress.md
 progress.md
+
+# Go (Agent)
+bin/
+agent/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Scala / sbt (Cluster)
+target/
+cluster/target/
+project/target/
+project/project/
+.bloop/
+.bsp/
+.metals/
+.scala-build/
+*.class
+*.log
+
+# IDEs & Editor
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
