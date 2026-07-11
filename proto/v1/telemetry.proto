@@ -1,21 +1,129 @@
 syntax = "proto3";
 
-package telemetry.v1;
+package aegis.telemetry.v1;
 
-option go_package = "github.com/yourusername/aegis/agent/pkg/api/v1;telemetryv1";
+option go_package = "github.com/aegis/proto/v1;telemetryv1";
+option java_multiple_files = true;
+option java_package = "com.aegis.telemetry.v1";
+option java_outer_classname = "TelemetryProto";
 
+// The core telemetry service for Go Sentinel <-> Scala Brain communication.
 service TelemetryService {
-  rpc StreamMetrics (stream MetricBatch) returns (Ack) {}
+  // Bi-directional stream for continuous metrics and backpressure signals.
+  // Agents stream telemetry data; Brain responds with acks or throttling commands.
+  rpc StreamTelemetry(stream TelemetryRequest) returns (stream TelemetryResponse);
+
+  // On-demand method to retrieve high-fidelity 60-second ring buffer contents.
+  // Triggered by the Brain when an anomaly is detected on a peer agent,
+  // or by operators via the Aegis CLI/Dashboard.
+  rpc FlushBuffer(FlushRequest) returns (stream FlushChunk);
 }
 
-message MetricBatch {
+// Metadata attached to every request from an agent.
+message AgentMetadata {
   string agent_id = 1;
-  int64 timestamp = 2;
-  double cpu_usage = 3;
-  double memory_usage = 4;
+  string hostname = 2;
+  string os = 3;
+  string kernel_version = 4;
+  int64 timestamp_ns = 5;
 }
 
-message Ack {
-  bool success = 1;
+// Data envelope that can hold different types of events.
+// Agents send one or more payloads per stream message.
+message TelemetryRequest {
+  AgentMetadata agent = 1;
+
+  oneof payload {
+    MetricPayload metric = 2;
+    SyscallPayload syscall = 3;
+    NetworkPayload network = 4;
+    AnomalyEvent anomaly = 5;
+  }
 }
 
+// Standard system-level metrics sampled at a configurable interval.
+message MetricPayload {
+  double cpu_usage_percent = 1;
+  double memory_usage_percent = 2;
+  int64 memory_used_bytes = 3;
+  int64 memory_total_bytes = 4;
+  int32 active_connections = 5;
+  int32 open_file_descriptors = 6;
+  double disk_io_read_bytes_sec = 7;
+  double disk_io_write_bytes_sec = 8;
+}
+
+// Captured syscall event from eBPF or ptrace.
+message SyscallPayload {
+  string syscall_name = 1;
+  int64 pid = 2;
+  int64 tid = 3;
+  int64 duration_ns = 4;
+  int32 return_code = 5;
+  bytes arguments = 6;
+  string stack_trace = 7;
+}
+
+// Network-level event (connection, packet, DNS).
+message NetworkPayload {
+  enum Direction {
+    INBOUND = 0;
+    OUTBOUND = 1;
+  }
+  string local_address = 1;
+  int32 local_port = 2;
+  string remote_address = 3;
+  int32 remote_port = 4;
+  string protocol = 5;
+  Direction direction = 6;
+  int64 bytes_transferred = 7;
+  int64 latency_ns = 8;
+}
+
+// Anomaly event detected by the agent's local analytics.
+message AnomalyEvent {
+  enum Severity {
+    INFO = 0;
+    WARNING = 1;
+    CRITICAL = 2;
+  }
+  string event_type = 1;
+  string description = 2;
+  Severity severity = 3;
+  double score = 4;
+  map<string, string> metadata = 5;
+}
+
+// The response from the brain, containing backpressure or control signals.
+message TelemetryResponse {
+  enum Action {
+    ACK = 0;
+    SLOW_DOWN = 1;
+    FLUSH_NOW = 2;
+    RESUME = 3;
+    DROP_LOW_PRIORITY = 4;
+  }
+  Action action = 1;
+  string message = 2;
+  // Suggested send interval in milliseconds when SLOW_DOWN is active.
+  int32 throttle_interval_ms = 3;
+}
+
+// Request to flush a specific agent's ring buffer.
+message FlushRequest {
+  string agent_id = 1;
+  int64 start_time_ns = 2;
+  int64 end_time_ns = 3;
+  // If empty, flush the full 60s window.
+  repeated string event_types = 4;
+  // Maximum bytes to return (0 = unlimited).
+  int64 max_bytes = 5;
+}
+
+// Chunked response for large flush payloads.
+message FlushChunk {
+  bytes data = 1;
+  int64 total_size = 2;
+  int64 offset = 3;
+  bool is_last = 4;
+}
