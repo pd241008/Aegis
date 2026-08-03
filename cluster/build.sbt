@@ -3,5 +3,12 @@ version := "0.1.0-SNAPSHOT"
 scalaVersion := "3.3.1" // Or 2.13.x depending on your Akka preference
 
 libraryDependencies ++= Seq(
-  // We will add gRPC, Akka, etc., here later
+  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
+  "io.grpc" % "grpc-netty" % scalapb.compiler.Version.grpcJavaVersion,
+  "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion
 )
+
+Compile / PB.targets := Seq(
+  scalapb.gen(grpc = true) -> (Compile / sourceManaged).value / "scalapb"
+)
+Compile / PB.protoSources += file("../proto")

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package aegis.telemetry.v1;
 
-option go_package = "github.com/aegis/proto/v1;telemetryv1";
+option go_package = "github.com/aegis/agent/proto/v1;telemetryv1";
 option java_multiple_files = true;
 option java_package = "com.aegis.telemetry.v1";
 option java_outer_classname = "TelemetryProto";
