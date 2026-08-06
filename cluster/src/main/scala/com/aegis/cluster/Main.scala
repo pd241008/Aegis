@@ -1,13 +1,29 @@
 package com.aegis.cluster
 
+import com.aegis.telemetry.v1.telemetry.TelemetryServiceGrpc
+import io.grpc.ServerBuilder
+
+import scala.concurrent.ExecutionContext
+
 object Main {
   def main(args: Array[String]): Unit = {
-    // TODO: Setup Scala/Akka Cluster project.
-    // TODO: Implement Ingestion & State Actors (Actor per Sentinel).
-    // TODO: Implement Sliding-Window Correlation Logic.
-    // TODO: Implement Backpressure Throttling (Action.SLOW_DOWN).
-    // TODO: Implement gRPC Flush Request Trigger.
+    val port = sys.env.get("AEGIS_BRAIN_PORT").flatMap(_.toIntOption).getOrElse(9090)
 
-    println("Aegis Central Cluster starting...")
+    val server = ServerBuilder
+      .forPort(port)
+      .addService(TelemetryServiceGrpc.bindService(new TelemetryServiceImpl, ExecutionContext.global))
+      .build()
+      .start()
+
+    println(s"Aegis Central Cluster (Brain) listening on port $port")
+
+    Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+      override def run(): Unit = {
+        println("Aegis Central Cluster shutting down...")
+        server.shutdown()
+      }
+    }))
+
+    server.awaitTermination()
   }
 }
