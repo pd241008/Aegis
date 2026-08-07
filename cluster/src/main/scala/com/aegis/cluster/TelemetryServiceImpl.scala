@@ -29,6 +29,8 @@ final class TelemetryServiceImpl extends TelemetryServiceGrpc.TelemetryService {
         val state = StateManager.sentinelFor(agentId)
         state.record(req)
 
+        publishAnomaly(agentId, req)
+
         val action =
           if (state.ratePerSecond > slowDownThreshold) {
             state.throttled = true
@@ -97,4 +99,19 @@ final class TelemetryServiceImpl extends TelemetryServiceGrpc.TelemetryService {
     case TelemetryResponse.Action.SLOW_DOWN => s"Brain saturated (${rate.toInt} msg/s). Slow down."
     case TelemetryResponse.Action.RESUME    => s"Brain recovered (${rate.toInt} msg/s). Resume normal rate."
     case _                                  => ""
+
+  /** Publishes anomaly payloads to the event bus for downstream consumers. */
+  private def publishAnomaly(agentId: String, req: TelemetryRequest): Unit = req.payload match
+    case TelemetryRequest.Payload.Anomaly(a) =>
+      AnomalyEventBus.publish(
+        AnomalyEventBus.AnomalyEvent(
+          agentId = agentId,
+          eventType = a.eventType,
+          description = a.description,
+          severity = a.severity.name,
+          score = a.score,
+          timestampNs = req.agent.map(_.timestampNs).filter(_ > 0L).getOrElse(System.currentTimeMillis() * 1_000_000L)
+        )
+      )
+    case _ => ()
 }
