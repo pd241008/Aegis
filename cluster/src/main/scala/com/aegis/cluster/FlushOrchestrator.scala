@@ -8,10 +8,10 @@ import java.time.Instant
   * Sub-phase 4A.2: when an anomaly is published, the orchestrator pulls
   * the target agent's ring buffer (held per-sentinel in the Brain) and
   * writes it as a reconstructable window for the RAG layer (Phase 4B+).
-  * In a full deployment this step would issue an on-demand `FlushBuffer`
-  * gRPC request to the agent and reassemble the chunk stream.
+  * Persisted windows are also indexed into the vector store (4B.4) for
+  * similarity retrieval.
   */
-final class FlushOrchestrator(store: BufferStore) extends AutoCloseable {
+final class FlushOrchestrator(store: BufferStore, indexer: RetrievalIndexer) extends AutoCloseable {
 
   private val subscription: AutoCloseable = AnomalyEventBus.subscribe(handle)
 
@@ -30,8 +30,9 @@ final class FlushOrchestrator(store: BufferStore) extends AutoCloseable {
     }
 
     val path = store.save(event.agentId, windowStart, event.timestampNs, entries)
+    indexer.indexWindow(event.agentId, windowStart, entries)
     System.out.println(
-      s"[FlushOrchestrator] persisted ${entries.size} entries for ${event.agentId} window @ ${Instant.ofEpochMilli(event.timestampNs / 1000000)} -> $path"
+      s"[FlushOrchestrator] persisted + indexed ${entries.size} entries for ${event.agentId} window @ ${Instant.ofEpochMilli(event.timestampNs / 1000000)} -> $path"
     )
   }
 
