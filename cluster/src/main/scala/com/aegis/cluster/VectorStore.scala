@@ -40,8 +40,11 @@ final class VectorStore {
   def index(id: String, vector: Array[Double], text: String, metadata: Map[String, String]): Unit =
     docs(id) = (vector, text, metadata)
 
-  def search(query: Array[Double], topK: Int): Seq[SearchHit] =
+  def search(query: Array[Double], topK: Int, excludeWindowStart: Option[Long] = None): Seq[SearchHit] =
     docs.toSeq
+      .filterNot { case (_, (_, _, meta)) =>
+        meta.get("window_start").flatMap(_.toLongOption).exists(ws => excludeWindowStart.contains(ws))
+      }
       .map { case (id, (vec, text, meta)) => SearchHit(id, cosine(query, vec), text, meta) }
       .sortBy(-_.score)
       .take(topK)

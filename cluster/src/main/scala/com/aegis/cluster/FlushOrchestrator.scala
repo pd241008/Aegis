@@ -11,7 +11,8 @@ import java.time.Instant
   * Persisted windows are also indexed into the vector store (4B.4) for
   * similarity retrieval.
   */
-final class FlushOrchestrator(store: BufferStore, indexer: RetrievalIndexer) extends AutoCloseable {
+final class FlushOrchestrator(store: BufferStore, indexer: RetrievalIndexer, briefing: BriefingService)
+    extends AutoCloseable {
 
   private val subscription: AutoCloseable = AnomalyEventBus.subscribe(handle)
 
@@ -31,6 +32,7 @@ final class FlushOrchestrator(store: BufferStore, indexer: RetrievalIndexer) ext
 
     val path = store.save(event.agentId, windowStart, event.timestampNs, entries)
     indexer.indexWindow(event.agentId, windowStart, entries)
+    briefing.generate(event)
     System.out.println(
       s"[FlushOrchestrator] persisted + indexed ${entries.size} entries for ${event.agentId} window @ ${Instant.ofEpochMilli(event.timestampNs / 1000000)} -> $path"
     )
