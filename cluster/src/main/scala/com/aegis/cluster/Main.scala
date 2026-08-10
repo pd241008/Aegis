@@ -10,7 +10,10 @@ object Main {
     val port = sys.env.get("AEGIS_BRAIN_PORT").flatMap(_.toIntOption).getOrElse(9090)
     val bufferDir = sys.env.getOrElse("AEGIS_BUFFER_DIR", "/tmp/aegis-buffers")
     val briefingDir = sys.env.getOrElse("AEGIS_BRIEFING_DIR", "/tmp/aegis-briefings")
+    val incidentDir = sys.env.getOrElse("AEGIS_INCIDENT_DIR", "/tmp/aegis-incidents")
     val httpPort = sys.env.get("AEGIS_HTTP_PORT").flatMap(_.toIntOption).getOrElse(9091)
+    val corrWindowMs = sys.env.get("AEGIS_CORR_WINDOW_MS").flatMap(_.toLongOption).getOrElse(10000L)
+    val corrMinAgents = sys.env.get("AEGIS_CORR_MIN_AGENTS").flatMap(_.toIntOption).getOrElse(2)
 
     val embedder: Embedder = new HashEmbedder()
     val vectorStore = new VectorStore()
@@ -22,7 +25,11 @@ object Main {
     val briefingStore = BriefingStore(briefingDir)
     val briefingService = new BriefingService(embedder, vectorStore, llm, briefingStore, notifier)
     val orchestrator = new FlushOrchestrator(store, indexer, briefingService)
-    val api = new HttpApi(embedder, vectorStore, briefingStore, httpPort)
+
+    val incidentStore = IncidentStore(incidentDir)
+    val incidentBriefing = new IncidentBriefingService(llm, incidentStore, notifier)
+    val correlation = new CorrelationEngine(corrMinAgents, corrWindowMs * 1_000_000L, 2000L)
+    val api = new HttpApi(embedder, vectorStore, briefingStore, incidentStore, httpPort)
 
     val server = ServerBuilder
       .forPort(port)
@@ -35,13 +42,17 @@ object Main {
     println(s"Aegis Central Cluster (Brain) listening on port $port")
     println(s"Buffer store: $bufferDir")
     println(s"Briefing store: $briefingDir")
+    println(s"Incident store: $incidentDir")
     println("Anomaly event bus + flush orchestrator active")
     println("Retrieval pipeline active (translate -> embed -> index)")
     println("Briefing pipeline active (prompt -> generate -> persist -> deliver)")
+    println(s"Incident correlation active ($corrMinAgents+ agents, ${corrWindowMs}ms window)")
 
     Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
       override def run(): Unit = {
         println("Aegis Central Cluster shutting down...")
+        correlation.close()
+        incidentBriefing.close()
         orchestrator.close()
         api.close()
         server.shutdown()
