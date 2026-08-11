@@ -44,6 +44,7 @@ object Main {
     println(s"Briefing store: $briefingDir")
     println(s"Incident store: $incidentDir")
     println("Anomaly event bus + flush orchestrator active")
+    println("Brain-side anomaly detection active (sliding-window z-score)")
     println("Retrieval pipeline active (translate -> embed -> index)")
     println("Briefing pipeline active (prompt -> generate -> persist -> deliver)")
     println(s"Incident correlation active ($corrMinAgents+ agents, ${corrWindowMs}ms window)")
