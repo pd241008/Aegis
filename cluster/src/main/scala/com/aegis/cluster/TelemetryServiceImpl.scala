@@ -30,6 +30,7 @@ final class TelemetryServiceImpl extends TelemetryServiceGrpc.TelemetryService {
         state.record(req)
 
         publishAnomaly(agentId, req)
+        state.detect(req).foreach(AnomalyEventBus.publish)
 
         val action =
           if (state.ratePerSecond > slowDownThreshold) {

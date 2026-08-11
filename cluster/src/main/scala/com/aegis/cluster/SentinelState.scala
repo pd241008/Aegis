@@ -18,6 +18,9 @@ final class SentinelState(val agentId: String) {
   private val buf = new ArrayDeque[(Long, TelemetryRequest)]()
   private val recvTimes = new ArrayDeque[Long]()
 
+  /** Brain-side sliding-window anomaly detector for this sentinel. */
+  val detector = new AnomalyDetector()
+
   @volatile var lastSeenNano: Long = 0L
   @volatile var anomalyCount: Long = 0L
   @volatile var throttled: Boolean = false
@@ -44,6 +47,10 @@ final class SentinelState(val agentId: String) {
     while (!recvTimes.isEmpty && now - recvTimes.peekFirst() > rateWindowNs) recvTimes.pollFirst()
     recvTimes.size / (rateWindowNs / 1e9)
   }
+
+  /** Runs sliding-window detection for this request. */
+  def detect(req: TelemetryRequest): Option[AnomalyEventBus.AnomalyEvent] =
+    detector.detect(agentId, req)
 
   /** Snapshot filtered by time range and payload type. */
   def snapshot(startNs: Long, endNs: Long, eventTypes: Seq[String]): Seq[TelemetryRequest] = synchronized {
