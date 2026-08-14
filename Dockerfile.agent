@@ -1,0 +1,24 @@
+# Dockerfile.agent
+# Multi-stage build for the Aegis Go edge sentinel.
+# The agent runs as root inside the container so it can read host /proc
+# (mounted read-only at runtime) for high-fidelity telemetry scraping.
+
+FROM golang:1.25-alpine AS build
+
+WORKDIR /src
+COPY agent/ /src/agent/
+WORKDIR /src/agent
+
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/aegis-agent ./cmd/agent
+
+FROM alpine:3.20
+
+COPY --from=build /out/aegis-agent /usr/local/bin/aegis-agent
+
+ENV AEGIS_BRAIN_ADDR=brain:9090 \
+    AEGIS_AGENT_ID=sentinel-001 \
+    AEGIS_PERSIST_DIR=/data/persist
+
+RUN mkdir -p /data/persist
+
+ENTRYPOINT ["aegis-agent"]

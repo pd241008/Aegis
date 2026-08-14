@@ -7,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/aegis/agent/internal/config"
 	telemetryv1 "github.com/aegis/agent/pkg/telemetry/pb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type FlatFileStore struct {
@@ -56,7 +58,7 @@ func (s *FlatFileStore) Persist(reqs []*telemetryv1.TelemetryRequest) error {
 
 	filepath := filepath.Join(s.cfg.PersistDir, filename)
 
-	data, err := json.MarshalIndent(reqs, "", "  ")
+	data, err := marshalList(reqs)
 	if err != nil {
 		return fmt.Errorf("failed to marshal telemetry data: %w", err)
 	}
@@ -96,7 +98,7 @@ func (s *FlatFileStore) LoadAll() ([]*telemetryv1.TelemetryRequest, error) {
 		}
 
 		var reqs []*telemetryv1.TelemetryRequest
-		if err := json.Unmarshal(data, &reqs); err != nil {
+		if err := unmarshalList(data, &reqs); err != nil {
 			log.Printf("Failed to unmarshal file %s: %v", filename, err)
 			continue
 		}
@@ -133,5 +135,40 @@ func (s *FlatFileStore) Cleanup(maxAge time.Duration) error {
 			}
 		}
 	}
+	return nil
+}
+
+// marshalList writes telemetry requests as a JSON array of protojson objects.
+// protojson (not encoding/json) is required to round-trip oneof payloads.
+func marshalList(reqs []*telemetryv1.TelemetryRequest) ([]byte, error) {
+	mo := protojson.MarshalOptions{Indent: "  "}
+	parts := make([]string, 0, len(reqs))
+	for _, r := range reqs {
+		b, err := mo.Marshal(r)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, string(b))
+	}
+	return []byte("[" + strings.Join(parts, ",\n") + "]"), nil
+}
+
+// unmarshalList parses a JSON array produced by marshalList. The array is
+// split with encoding/json, then each object is decoded with protojson so
+// oneof payloads survive the round trip.
+func unmarshalList(data []byte, out *[]*telemetryv1.TelemetryRequest) error {
+	var raws []json.RawMessage
+	if err := json.Unmarshal(data, &raws); err != nil {
+		return err
+	}
+	decoded := make([]*telemetryv1.TelemetryRequest, 0, len(raws))
+	for _, raw := range raws {
+		var r telemetryv1.TelemetryRequest
+		if err := protojson.Unmarshal(raw, &r); err != nil {
+			return err
+		}
+		decoded = append(decoded, &r)
+	}
+	*out = decoded
 	return nil
 }
