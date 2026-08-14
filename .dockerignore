@@ -1,0 +1,34 @@
+# VCS
+.git
+.gitignore
+
+# Local progress tracking (git-excluded)
+docs/progress.md
+progress.md
+
+# Go
+agent/bin/
+agent/*.exe
+*.test
+*.out
+agent/vendor/
+
+# Scala / sbt build output
+cluster/target/
+cluster/project/target/
+cluster/project/project/
+**.class
+
+# IDE / tooling
+.idea/
+.vscode/
+.metals/
+.bloop/
+.bsp/
+.scala-build/
+*.swp
+*~
+.DS_Store
+
+# Local compose env
+deployments/compose.env

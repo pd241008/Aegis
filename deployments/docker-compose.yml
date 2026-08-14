@@ -1,0 +1,86 @@
+# Aegis: distributed telemetry engine — local dev stack.
+#
+# Brings up the full pipeline in one command:
+#   docker compose -f deployments/docker-compose.yml up --build
+#
+# Services:
+#   brain      - Scala/Akka correlation cluster (gRPC :9090, HTTP API :9091)
+#   sentinel-N - Go edge agents streaming host telemetry into the brain
+#
+# Optional env overrides (see compose.env.example):
+#   AEGIS_CORR_MIN_AGENTS - agents required to form an incident (default 2)
+
+name: aegis
+
+services:
+  brain:
+    build:
+      context: ..
+      dockerfile: Dockerfile.cluster
+    container_name: aegis-brain
+    environment:
+      AEGIS_BRAIN_PORT: "9090"
+      AEGIS_HTTP_PORT: "9091"
+      AEGIS_BUFFER_DIR: /data/buffers
+      AEGIS_BRIEFING_DIR: /data/briefings
+      AEGIS_INCIDENT_DIR: /data/incidents
+      AEGIS_CORR_MIN_AGENTS: "${AEGIS_CORR_MIN_AGENTS:-2}"
+      AEGIS_CORR_WINDOW_MS: "10000"
+    ports:
+      - "9090:9090"
+      - "9091:9091"
+    volumes:
+      - aegis-brain-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9091"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  sentinel-1:
+    build:
+      context: ..
+      dockerfile: Dockerfile.agent
+    container_name: aegis-sentinel-1
+    environment:
+      AEGIS_BRAIN_ADDR: brain:9090
+      AEGIS_AGENT_ID: sentinel-001
+      AEGIS_PERSIST_DIR: /data/persist
+    volumes:
+      - aegis-sentinel-1-persist:/data/persist
+      - /proc:/proc:ro
+    depends_on:
+      brain:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f aegis-agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  sentinel-2:
+    build:
+      context: ..
+      dockerfile: Dockerfile.agent
+    container_name: aegis-sentinel-2
+    environment:
+      AEGIS_BRAIN_ADDR: brain:9090
+      AEGIS_AGENT_ID: sentinel-002
+      AEGIS_PERSIST_DIR: /data/persist
+    volumes:
+      - aegis-sentinel-2-persist:/data/persist
+      - /proc:/proc:ro
+    depends_on:
+      brain:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f aegis-agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  aegis-brain-data:
+  aegis-sentinel-1-persist:
+  aegis-sentinel-2-persist:
