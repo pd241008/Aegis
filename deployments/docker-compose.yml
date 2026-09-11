@@ -32,7 +32,9 @@ services:
     volumes:
       - aegis-brain-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9091"]
+      # dash (the CMD-SHELL shell on jammy) has no /dev/tcp, so run the probe
+      # under bash explicitly.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9091'"]
       interval: 5s
       timeout: 3s
       retries: 12
