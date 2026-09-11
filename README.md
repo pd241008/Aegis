@@ -65,16 +65,19 @@ Aegis uses **gRPC** with **Protocol Buffers (proto3)** for the Go-to-Scala bound
 
 ---
 
-## 🕹 Interactive Simulator
+## 🐳 Local Stack
 
-Visualize how Aegis handles massive scale and anomaly detection under load.
+Bring up the full pipeline (brain + sentinels) in one command and smoke-check it:
 
 ```bash
-# Run the Aegis Simulator to test scaling and chaos scenarios
-go run ./simulator/main.go --agents 1000 --chaos network-partition
+# Build and start the brain + 2 sentinels
+docker compose -f deployments/docker-compose.yml up --build
+
+# End-to-end smoke check (builds stack, verifies gRPC + HTTP API + retrieval)
+scripts/e2e.sh
 ```
 
-### Simulation Scenarios:
+### Roadmap scenarios (simulator not built yet):
 - **Scaling:** Monitor how the Scala cluster handles backpressure from 10,000+ agents.
 - **Zero-Drop:** Test local caching on Go agents during network partitions.
 - **Anomaly Flush:** Trigger an alert and watch the high-fidelity buffer transmission.
