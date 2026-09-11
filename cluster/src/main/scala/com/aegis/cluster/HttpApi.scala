@@ -3,12 +3,13 @@ package com.aegis.cluster
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
 
 import java.net.{InetSocketAddress, URLDecoder}
-import java.nio.file.Files
+import java.nio.file.{Files, Path, Paths}
 
-/** Brain HTTP surface (4B.4 + 4C.4 + 4D.3): retrieval, briefing and
-  * incident delivery.
+/** Brain HTTP surface (4B.4 + 4C.4 + 4D.3): retrieval, briefing, incident
+  * delivery and the Phase 4 dashboard.
   *
   * Routes (one JDK HttpServer, zero new dependencies):
+  *   - `GET /`                              static dashboard (frontend/)
   *   - `GET /api/v1/retrieve?q=<text>&top_k=5`  top-k similar telemetry
   *   - `GET /api/v1/briefings?agent_id=X`       briefing metadata list
   *   - `GET /api/v1/briefings/latest?agent_id=X` newest briefing markdown
@@ -20,19 +21,68 @@ final class HttpApi(
     store: VectorStore,
     briefingStore: BriefingStore,
     incidentStore: IncidentStore,
-    port: Int
+    port: Int,
+    webRoot: Path = Paths.get("frontend")
 ) extends AutoCloseable {
 
   private var server: HttpServer = _
+  private val root: Path = webRoot.toAbsolutePath.normalize
 
   def start(): Unit = {
     server = HttpServer.create(new InetSocketAddress(port), 0)
     server.createContext("/api/v1/retrieve", handleRetrieve(_))
     server.createContext("/api/v1/briefings", handleBriefings(_))
     server.createContext("/api/v1/incidents", handleIncidents(_))
+    server.createContext("/", handleStatic(_))
     server.setExecutor(null)
     server.start()
-    println(s"HTTP API listening on port $port")
+    println(s"HTTP API listening on port $port (webroot: $root)")
+  }
+
+  /** Serves the zero-dependency static dashboard from `webRoot`. The JDK
+    * HttpServer matches the longest context prefix, so `/` only sees
+    * non-API paths. Path traversal is rejected up front.
+    */
+  private def handleStatic(exchange: HttpExchange): Unit = {
+    try {
+      val raw = Option(exchange.getRequestURI.getPath).getOrElse("/").stripPrefix("/")
+      val segments = raw.split('/').toList.filter(s => s.nonEmpty && s != ".")
+      if (segments.exists(_ == "..")) {
+        respond(exchange, 400, """{"error":"bad path"}""")
+        return
+      }
+      val file =
+        if (segments.isEmpty) root.resolve("index.html")
+        else root.resolve(segments.mkString("/"))
+      if (Files.isRegularFile(file) && Files.isReadable(file)) {
+        val bytes = Files.readAllBytes(file)
+        exchange.getResponseHeaders.set("Content-Type", contentType(file.getFileName.toString))
+        exchange.sendResponseHeaders(200, bytes.length)
+        exchange.getResponseBody.write(bytes)
+      } else {
+        respond(exchange, 404, """{"error":"not found"}""")
+      }
+    } catch {
+      case t: Throwable => respondError(exchange, t)
+    } finally {
+      exchange.close()
+    }
+  }
+
+  private def contentType(name: String): String = {
+    val idx = name.lastIndexOf('.')
+    val ext = if (idx >= 0) name.substring(idx + 1).toLowerCase else ""
+    ext match {
+      case "html" => "text/html; charset=utf-8"
+      case "css"  => "text/css; charset=utf-8"
+      case "js"   => "application/javascript; charset=utf-8"
+      case "json" => "application/json"
+      case "svg"  => "image/svg+xml"
+      case "png"  => "image/png"
+      case "ico"  => "image/x-icon"
+      case "txt"  => "text/plain; charset=utf-8"
+      case _      => "application/octet-stream"
+    }
   }
 
   private def handleRetrieve(exchange: HttpExchange): Unit = {

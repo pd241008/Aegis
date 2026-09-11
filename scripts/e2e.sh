@@ -65,5 +65,15 @@ curl -fsS "${BRAIN_URL}/api/v1/briefings" >/dev/null
 curl -fsS "${BRAIN_URL}/api/v1/incidents" >/dev/null
 echo "    OK"
 
+echo "==> Verifying the Phase 4 dashboard is served..."
+if ! curl -fsS "${BRAIN_URL}/" | grep -q "Aegis — Telemetry Dashboard"; then
+  echo "ERROR: dashboard not served at ${BRAIN_URL}/" >&2
+  compose logs --tail 30 brain || true
+  exit 1
+fi
+curl -fsS "${BRAIN_URL}/css/styles.css" >/dev/null
+curl -fsS "${BRAIN_URL}/js/app.js" >/dev/null
+echo "    dashboard OK"
+
 echo
 echo "Aegis E2E check passed."

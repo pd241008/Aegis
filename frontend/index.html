@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis — Telemetry Dashboard</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🛡️</span>
+      <h1>Aegis</h1>
+      <span class="tagline">Telemetry Engine</span>
+    </div>
+    <div class="controls">
+      <span id="brain-status" class="status"><span class="dot"></span>connecting…</span>
+      <label class="refresh">
+        <input type="checkbox" id="auto-refresh" checked />
+        auto-refresh <span id="interval-label">5s</span>
+      </label>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel" id="panel-incidents">
+      <header class="panel-head">
+        <h2>Incidents</h2>
+        <span id="incident-count" class="count"></span>
+      </header>
+      <ul id="incident-list" class="list"></ul>
+      <article id="incident-detail" class="detail hidden"></article>
+    </section>
+
+    <section class="panel" id="panel-briefings">
+      <header class="panel-head">
+        <h2>Briefings</h2>
+        <div class="filters">
+          <input id="agent-filter" type="text" placeholder="agent_id (optional)" spellcheck="false" />
+          <button id="reload-briefings" type="button">reload</button>
+        </div>
+      </header>
+      <article id="briefing-detail" class="detail"></article>
+      <ul id="briefing-list" class="list"></ul>
+    </section>
+
+    <section class="panel" id="panel-retrieve">
+      <header class="panel-head">
+        <h2>Retrieve</h2>
+        <div class="filters">
+          <input id="search-query" type="text" placeholder="search indexed telemetry…" spellcheck="false" />
+          <input id="search-topk" type="number" min="1" max="50" value="5" title="top-k" />
+          <button id="search-btn" type="button">search</button>
+        </div>
+      </header>
+      <ul id="retrieve-list" class="list"></ul>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Aegis · Go sentinels → Scala brain · <code>/api/v1</code> consumer</span>
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
