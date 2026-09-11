@@ -82,6 +82,18 @@ class TelemetryServiceImplTest extends munit.FunSuite {
     }
     ingest.onCompleted()
 
+    // onCompleted() is async; wait until the server has ingested all 5
+    // messages before flushing so the window is non-empty.
+    val ingestDeadline = System.currentTimeMillis() + 5000
+    while (
+      !StateManager.get(agentId).exists(_.size >= 5) &&
+      System.currentTimeMillis() < ingestDeadline
+    ) Thread.sleep(10)
+    assert(
+      StateManager.get(agentId).exists(_.size >= 5),
+      "ingested messages should be recorded before flush"
+    )
+
     val chunks = new ConcurrentLinkedQueue[FlushChunk]()
     TelemetryServiceGrpc
       .stub(channel)
