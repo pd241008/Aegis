@@ -3,6 +3,7 @@ package com.aegis.cluster
 import com.aegis.telemetry.v1.telemetry.TelemetryServiceGrpc
 import io.grpc.ServerBuilder
 
+import java.nio.file.Paths
 import scala.concurrent.ExecutionContext
 
 object Main {
@@ -12,6 +13,7 @@ object Main {
     val briefingDir = sys.env.getOrElse("AEGIS_BRIEFING_DIR", "/tmp/aegis-briefings")
     val incidentDir = sys.env.getOrElse("AEGIS_INCIDENT_DIR", "/tmp/aegis-incidents")
     val httpPort = sys.env.get("AEGIS_HTTP_PORT").flatMap(_.toIntOption).getOrElse(9091)
+    val webRoot = sys.env.getOrElse("AEGIS_WEBROOT", "frontend")
     val corrWindowMs = sys.env.get("AEGIS_CORR_WINDOW_MS").flatMap(_.toLongOption).getOrElse(10000L)
     val corrMinAgents = sys.env.get("AEGIS_CORR_MIN_AGENTS").flatMap(_.toIntOption).getOrElse(2)
 
@@ -29,7 +31,7 @@ object Main {
     val incidentStore = IncidentStore(incidentDir)
     val incidentBriefing = new IncidentBriefingService(llm, incidentStore, notifier)
     val correlation = new CorrelationEngine(corrMinAgents, corrWindowMs * 1_000_000L, 2000L)
-    val api = new HttpApi(embedder, vectorStore, briefingStore, incidentStore, httpPort)
+    val api = new HttpApi(embedder, vectorStore, briefingStore, incidentStore, httpPort, Paths.get(webRoot))
 
     val server = ServerBuilder
       .forPort(port)
@@ -48,6 +50,7 @@ object Main {
     println("Retrieval pipeline active (translate -> embed -> index)")
     println("Briefing pipeline active (prompt -> generate -> persist -> deliver)")
     println(s"Incident correlation active ($corrMinAgents+ agents, ${corrWindowMs}ms window)")
+    println(s"Dashboard webroot: $webRoot")
 
     Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
       override def run(): Unit = {

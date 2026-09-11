@@ -26,14 +26,16 @@ ENV AEGIS_BRAIN_PORT=9090 \
     AEGIS_BRIEFING_DIR=/data/briefings \
     AEGIS_INCIDENT_DIR=/data/incidents \
     AEGIS_CORR_MIN_AGENTS=2 \
-    AEGIS_CORR_WINDOW_MS=10000
+    AEGIS_CORR_WINDOW_MS=10000 \
+    AEGIS_WEBROOT=/opt/aegis/frontend
 
 RUN useradd -m -u 10001 aegis \
     && mkdir -p /data/buffers /data/briefings /data/incidents \
     && chown -R aegis:aegis /data
 
 COPY --from=build /build/cluster/target/scala-3.3.1/aegis-cluster.jar /opt/aegis/aegis-cluster.jar
-RUN chown aegis:aegis /opt/aegis/aegis-cluster.jar
+COPY frontend/ /opt/aegis/frontend/
+RUN chown aegis:aegis /opt/aegis/aegis-cluster.jar /opt/aegis/frontend
 
 USER aegis
 WORKDIR /opt/aegis
