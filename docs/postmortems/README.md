@@ -1,6 +1,6 @@
 # 🔥 Aegis Postmortems
 
-> **Status:** No incidents documented yet. Infrastructure set up.
+> **Status:** Active — 2 incidents documented.
 
 ---
 
@@ -22,10 +22,12 @@ truth.
 
 | Date | Subsystem | Severity | Link |
 | :--- | :--- | :--- | :--- |
-| _— none yet —_ | | | |
+| 2026-09-14 | CI / e2e smoke check | High — masked all CI signal for 3 days | [e2e retrieval never indexed](./2026-09-14-e2e-retrieval-never-indexed.md) |
+| 2026-09-14 | Agent flat-file persistence | Critical (latent) — zero-drop spool could not replay | [protojson oneof round-trip](./2026-09-14-protojson-oneof-round-trip.md) |
 
 > [!NOTE]
-> Aegis is young, so this registry is empty by design. Start it when the
-> first real incident or near-miss happens — do not postmortem feature work,
-> only failures. Good first candidates from the build so far: the
-> protojson round-trip fix in flat-file persistence (6b7a3ea).
+> Both entries are near-misses caught before production, retroactively
+> documented: the protojson round-trip was fixed 2026-08-14 (commit
+> `6b7a3ab`) and postmortemed 2026-09-14; the e2e failure was live on CI
+> 2026-09-11 → 2026-09-14. Rule of thumb so far: **a silently-wrong
+> assertion is worse than a failing test** — it converts signal into noise.
