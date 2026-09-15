@@ -15,6 +15,7 @@ import java.nio.file.{Files, Path, Paths}
   *   - `GET /api/v1/briefings/latest?agent_id=X` newest briefing markdown
   *   - `GET /api/v1/incidents`                  incident metadata list
   *   - `GET /api/v1/incidents/latest`           newest incident briefing
+  *   - `POST /api/v1/index`                     reindex persisted windows into the vector store
   */
 final class HttpApi(
     embedder: Embedder,
@@ -22,7 +23,8 @@ final class HttpApi(
     briefingStore: BriefingStore,
     incidentStore: IncidentStore,
     port: Int,
-    webRoot: Path = Paths.get("frontend")
+    webRoot: Path = Paths.get("frontend"),
+    reindex: () => Int = () => 0
 ) extends AutoCloseable {
 
   private var server: HttpServer = _
@@ -33,6 +35,7 @@ final class HttpApi(
     server.createContext("/api/v1/retrieve", handleRetrieve(_))
     server.createContext("/api/v1/briefings", handleBriefings(_))
     server.createContext("/api/v1/incidents", handleIncidents(_))
+    server.createContext("/api/v1/index", handleIndex(_))
     server.createContext("/", handleStatic(_))
     server.setExecutor(null)
     server.start()
@@ -139,6 +142,24 @@ final class HttpApi(
         val body = incidentStore.list.map(p => Files.readString(p)).mkString("[", ",", "]")
         respond(exchange, 200, body)
       }
+    } catch {
+      case t: Throwable => respondError(exchange, t)
+    } finally {
+      exchange.close()
+    }
+  }
+
+  /** Re-runs the startup reindex (POST only). Lets an operator rebuild the
+    * retrieval index from persisted windows without restarting the brain.
+    */
+  private def handleIndex(exchange: HttpExchange): Unit = {
+    try {
+      if (exchange.getRequestMethod != "POST") {
+        respond(exchange, 405, """{"error":"method not allowed, use POST"}""")
+        return
+      }
+      val indexed = reindex()
+      respond(exchange, 200, s"""{"indexed":$indexed}""")
     } catch {
       case t: Throwable => respondError(exchange, t)
     } finally {
