@@ -57,7 +57,7 @@ graph LR
 #### Level 3: Component (Internal Logic)
 
 **Go Sentinel (The Edge):**
-- **Scraper:** Hooks into eBPF/Syscalls to capture system state.
+- **Scraper:** Reads metrics, connections and network tables from `/proc` (eBPF-grade syscall capture with stack traces is on the roadmap).
 - **Ring Buffer:** Stores 60s of raw telemetry in-memory.
 - **Local Analytics:** Threshold-based triggers for anomaly detection.
 - **gRPC Client:** Managed streaming with circuit breaking.
@@ -91,8 +91,8 @@ The Scala Brain utilizes the **Akka Actor Model**. When 10,000+ agents start str
 
 #### "Zero-Drop" Telemetry
 During network partitions, Aegis maintains data integrity:
-- **Local Persistence:** Go agents spool telemetry to a local high-performance cache (e.g., BadgerDB or flat files) if the Brain is unreachable.
-- **Replay Mechanism:** Once the connection is restored, agents perform a "backfill" upload, prioritizing the most recent anomaly data.
+- **Local Persistence:** Go agents spool telemetry to a local flat-file cache if the Brain is unreachable.
+- **Replay Mechanism:** Once the connection is restored, agents replay the spool over the re-established stream (implemented — see [ADR-009](adr/ADR-009-agent-local-analytics-edge-detection.md)).
 
 ---
 
@@ -102,5 +102,5 @@ During network partitions, Aegis maintains data integrity:
 | :--- | :--- |
 | **Brain Outage** | Agents enter "Dumb Mode." They stop streaming but continue scraping to local buffers. |
 | **Network Partition** | Regional clusters operate independently; global state is reconciled once the partition heals. |
-| **Agent Crash** | The Ring Buffer is lost, but the last flushed state remains in the Scala Brain. Watchdogs restart the agent immediately. |
+| **Agent Crash** | The Ring Buffer is lost, but the last flushed state remains in the Scala Brain. Compose applies `restart: unless-stopped` so the container supervisor restarts the agent. |
 | **Vector Store Down** | Diagnostic Briefings are queued. Raw telemetry is preserved in long-term storage for later processing. |
