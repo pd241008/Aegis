@@ -7,6 +7,7 @@ libraryDependencies ++= Seq(
   "io.grpc" % "grpc-netty" % scalapb.compiler.Version.grpcJavaVersion,
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
   "com.google.protobuf" % "protobuf-java-util" % "3.25.3",
+  "com.google.code.gson" % "gson" % "2.11.0",
   "org.scalameta" %% "munit" % "1.0.0" % Test
 )
 

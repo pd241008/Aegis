@@ -22,7 +22,7 @@ object Main {
     val store = BufferStore(bufferDir)
     val indexer = new RetrievalIndexer(embedder, vectorStore)
 
-    val llm: Llm = new RuleBasedLlm()
+    val llm: Llm = LlmFactory.fromEnv()
     val notifier: Notifier = new LogNotifier()
     val briefingStore = BriefingStore(briefingDir)
     val briefingService = new BriefingService(embedder, vectorStore, llm, briefingStore, notifier)
