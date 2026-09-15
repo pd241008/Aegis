@@ -90,7 +90,7 @@ scripts/e2e.sh
 
 - **Edge syscalls are shallow.** The agent reads `/proc/<pid>/syscall` (hardcoded to PID 1, permission-dependent — often empty in containers); `stack_trace` is never populated; there is no eBPF yet despite the early design language.
 - **No TSDB.** The C4 diagram's "Time-Series DB" is aspirational — all persistence is flat files ([ADR-007](docs/adr/ADR-007-flat-file-persistence.md)).
-- **Briefings are template prose.** The default `RuleBasedLlm` and `HashEmbedder` are deterministic placeholders behind pluggable interfaces ([ADR-008](docs/adr/ADR-008-rag-briefing-deterministic-defaults.md)).
+- **Briefings are API-backed when configured.** With `AEGIS_LLM_API_KEY` set, briefings come from any OpenAI-compatible endpoint ([ADR-011](docs/adr/ADR-011-openai-compatible-api-backed-briefings.md)); without one (CI, offline), the deterministic `RuleBasedLlm` and `HashEmbedder` defaults behind pluggable interfaces still apply ([ADR-008](docs/adr/ADR-008-rag-briefing-deterministic-defaults.md)). Retrieval embeddings remain hash-based — no embedding API yet.
 - **Notifications go to stdout.** `LogNotifier` is the only `Notifier` implementation; Slack/PagerDuty hooks are future work.
 - **No Aegis CLI.** The C4 Level 1 diagram shows one; operators use the HTTP API today.
 
