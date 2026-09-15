@@ -52,10 +52,33 @@ done
 echo "    sentinel-1 connected via gRPC"
 
 echo "==> Verifying the retrieval pipeline..."
-body="$(curl -fsS "${BRAIN_URL}/api/v1/retrieve?q=cpu%20usage")"
+
+# Retrieval is fed by the anomaly -> flush -> index pipeline. With lowered
+# smoke thresholds (see ci.yml) an agent-side anomaly fires within seconds,
+# so poll for indexed telemetry before failing. POST /api/v1/index forces a
+# reindex from persisted windows as a fallback.
+body=""
+deadline=$((SECONDS + MAX_WAIT))
+while :; do
+  body="$(curl -fsS "${BRAIN_URL}/api/v1/retrieve?q=cpu%20usage" 2>/dev/null || true)"
+  if [[ -n "$body" && "$body" != "[]" ]]; then
+    break
+  fi
+  if ((SECONDS >= deadline)); then
+    echo "    retrieval still empty; forcing reindex from persisted windows..."
+    curl -fsS -X POST "${BRAIN_URL}/api/v1/index" >/dev/null 2>&1 || true
+    body="$(curl -fsS "${BRAIN_URL}/api/v1/retrieve?q=cpu%20usage" 2>/dev/null || true)"
+    break
+  fi
+  sleep 2
+done
+
 if [[ -z "$body" || "$body" == "[]" ]]; then
   echo "ERROR: retrieval returned no indexed telemetry" >&2
+  echo "       (retrieval route is up but the vector store stayed empty —" >&2
+  echo "        check that agent anomalies fired and windows were indexed)" >&2
   compose logs --tail 50 brain || true
+  compose logs --tail 20 sentinel-1 || true
   exit 1
 fi
 echo "    retrieval OK ($(echo "$body" | wc -c) bytes of indexed telemetry)"

@@ -1,7 +1,7 @@
 # Aegis: Distributed Telemetry Engine 🛡️
 ### Solving the "Context Gap" in Distributed Observability
 
-Aegis is a high-fidelity telemetry engine that moves beyond passive monitoring. It captures the "Why" behind system anomalies by maintaining a rolling 60-second window of deep system state at the edge, flushing it to a Scala-powered brain for real-time correlation and LLM-driven diagnostic briefings.
+Aegis is a high-fidelity telemetry engine that moves beyond passive monitoring. It captures the "Why" behind system anomalies by maintaining a rolling 60-second window of deep system state at the edge, flushing it to a Scala-powered brain for real-time correlation and diagnostic briefings.
 
 ---
 
@@ -11,10 +11,10 @@ Aegis is a high-fidelity telemetry engine that moves beyond passive monitoring. 
 Instead of a passive collector, the Aegis Go agent acts as a sentinel. It uses a **Ring-Buffer Strategy** to store the last 60 seconds of high-fidelity state (syscalls, network packets, stack traces) locally. Data is only flushed when a threshold is hit or when explicitly requested by the Brain.
 
 ### The Brain (Scala) — *The Global State Map*
-Utilizing the **Actor Model**, the Scala cluster treats incoming telemetry as a continuous stream of events. It runs sliding-window analysis to correlate events across different agents (e.g., matching a latency spike on Agent A with a connection drop on Agent B).
+Using the **actor pattern** (one state object per sentinel — plain Scala concurrency, no Akka dependency), the cluster treats incoming telemetry as a continuous stream of events. It runs sliding-window analysis to correlate events across different agents (e.g., matching a latency spike on Agent A with a connection drop on Agent B).
 
 ### The Insight (RAG Layer) — *Diagnostic Briefings*
-When an anomaly is detected, Aegis retrieves the 60-second buffer, indexes it into a vector store, and provides a **Diagnostic Briefing** via an LLM, bridging the gap between metrics and root causes.
+When an anomaly is detected (by the agent's threshold triggers or the brain's z-score detector), Aegis retrieves the 60-second buffer, indexes it into a vector store, and produces a **Diagnostic Briefing**. The default generator is deterministic (template-based) behind a pluggable `Llm` interface — see [ADR-008](docs/adr/ADR-008-rag-briefing-deterministic-defaults.md).
 
 ---
 
@@ -24,19 +24,21 @@ When an anomaly is detected, Aegis retrieves the 60-second buffer, indexes it in
   - `cmd/agent/` — Agent entrypoint with signal handling and graceful shutdown.
   - `internal/scraper/` — CPU, memory, FD, TCP/TCP6 connection, and syscall scraping from `/proc`.
   - `internal/buffer/` — Thread-safe ring buffer with 60s time-window and byte-budget eviction.
-  - `internal/transport/` — gRPC bidirectional stream client with backpressure handling (`SLOW_DOWN`, `RESUME`, `FLUSH_NOW`, `DROP_LOW_PRIORITY`).
-  - `internal/persistence/` — Flat-file store for local zero-drop caching during brain outages.
-  - `internal/config/` — Environment-driven agent configuration.
+  - `internal/anomaly/` — Local threshold triggers (CPU/memory, consecutive-breach streak, cooldown) emitting `AnomalyEvent`s — see [ADR-009](docs/adr/ADR-009-agent-local-analytics-edge-detection.md).
+  - `internal/transport/` — gRPC bidirectional stream client: reconnect with exponential backoff, spool replay on (re)connect, backpressure handling (`SLOW_DOWN`, `RESUME`, `FLUSH_NOW`, `DROP_LOW_PRIORITY`).
+  - `internal/persistence/` — Flat-file spool (protojson) for zero-drop caching during brain outages, replayed on reconnect.
+  - `internal/config/` — Environment-driven agent configuration (scrape interval, buffer size, anomaly thresholds).
   - `pkg/telemetry/pb/` — Generated Protobuf/GRPC Go bindings.
 - **`cluster/`**: Scala/Akka-based correlation brain.
   - `TelemetryServiceImpl` — gRPC server: bi-directional stream ingestion + chunked flush (~1MB chunks).
   - `SentinelState` — Per-agent 60s sliding buffer + 5s rate tracker (actor-per-sentinel pattern).
+  - `StartupReindexer` — Rebuilds the in-memory retrieval index from persisted windows at startup (and on `POST /api/v1/index`).
   - `AnomalyDetector` — Rolling z-score detection (WARNING ≥ 2.5σ, CRITICAL ≥ 4.0σ) with per-metric cooldown.
   - `CorrelationEngine` — Multi-agent incident synthesis from the anomaly event bus.
   - `FlushOrchestrator` — Persists triggering windows on anomaly and feeds the RAG pipeline.
   - `BriefingService` — Per-agent diagnostic briefing generation (translate → embed → retrieve → prompt → generate → persist → notify).
   - `IncidentBriefingService` — Aggregated cross-agent incident briefings (alert-storm reduction).
-  - `HttpApi` — REST surface for retrieval, briefing listing, and incident listing.
+  - `HttpApi` — REST surface for retrieval, briefing listing, incident listing, and index rebuild.
   - `StateManager` — Global registry of connected sentinels.
   - `AnomalyEventBus` / `IncidentBus` — In-process pub/sub decoupling ingestion from downstream consumers.
   - `VectorStore` — In-memory cosine-similarity search (swap-ready for FAISS/Qdrant/pgvector).
@@ -79,8 +81,18 @@ scripts/e2e.sh
 
 ### Roadmap scenarios (simulator not built yet):
 - **Scaling:** Monitor how the Scala cluster handles backpressure from 10,000+ agents.
-- **Zero-Drop:** Test local caching on Go agents during network partitions.
+- **Zero-Drop:** Test local caching + spool replay on Go agents during network partitions.
 - **Anomaly Flush:** Trigger an alert and watch the high-fidelity buffer transmission.
+
+---
+
+## 🐘 Known Gaps & Honest Limitations
+
+- **Edge syscalls are shallow.** The agent reads `/proc/<pid>/syscall` (hardcoded to PID 1, permission-dependent — often empty in containers); `stack_trace` is never populated; there is no eBPF yet despite the early design language.
+- **No TSDB.** The C4 diagram's "Time-Series DB" is aspirational — all persistence is flat files ([ADR-007](docs/adr/ADR-007-flat-file-persistence.md)).
+- **Briefings are template prose.** The default `RuleBasedLlm` and `HashEmbedder` are deterministic placeholders behind pluggable interfaces ([ADR-008](docs/adr/ADR-008-rag-briefing-deterministic-defaults.md)).
+- **Notifications go to stdout.** `LogNotifier` is the only `Notifier` implementation; Slack/PagerDuty hooks are future work.
+- **No Aegis CLI.** The C4 Level 1 diagram shows one; operators use the HTTP API today.
 
 ---
 
@@ -143,25 +155,35 @@ graph LR
 - **Correlation Engine:** Sliding-window analysis across multiple streams.
 - **Persistence Layer:** Asynchronous writes to TSDB/Persistence.
 
----
+---## ⚖️ License
 
-## ⚖️ License
 MIT © 2026 Aegis Team
 
 ---
 
 ## 🎯 Project Roadmap
-- [x] **Phase 1**: Distributed Cluster & Agent Topology Scaffold.
-- [x] **Phase 2**: Core Telemetry Infrastructure & Protobufs.
-- [x] **Phase 3**: Centralized API & Microservices Integration.
-- [ ] **Phase 4**: Frontend Dashboard Implementation.
+
+Phases 1–2 cover the transport spine; Phase 3 the brain's analysis core;
+Phase 4 the intelligence pipeline (tracked in sub-phases 4A–4D, matching
+the commit history):
+
+- [x] **Phase 1**: gRPC/Protobuf contract (`proto/v1/telemetry.proto`).
+- [x] **Phase 2**: Go edge agent (scraper, ring buffer, streaming, spool).
+- [x] **Phase 3**: Scala brain (ingestion, backpressure, detection, flush).
+- [x] **Phase 4**: Intelligence pipeline — 4A event bus + flush, 4B retrieval,
+      4C briefings, 4D incident correlation + dashboard + Docker e2e.
+
+### Up next (not started)
+- eBPF-grade syscall capture with stack traces on the edge.
+- Real LLM/embedding/vector-store implementations behind the ADR-008 interfaces.
+- Outbound notifiers (Slack/PagerDuty) behind the `Notifier` interface.
+- Aegis CLI on top of the HTTP API.
 
 ---
 
 ## 📖 Documentation
-For the full engineering proposal, see [docs/architecture.md](docs/architecture.md).
 
-- **System Philosophy**: Reactive vs. Passive tracing.
-- **C4 Diagrams**: Multi-level component visualization.
-- **Communication Contract**: gRPC/Protobuf rationale.
-- **Scaling & Failure**: Backpressure and Zero-Drop strategies.
+- **[Architecture proposal](docs/architecture.md)** — system philosophy, C4 diagrams, scaling & failure modes.
+- **[ADR catalog](docs/adr/README.md)** — 10 architecture decision records, written in the
+  [Design-Dungeons](https://github.com/pd241008/Design-Dungeons) format.
+- **[Postmortems](docs/postmortems/README.md)** — incidents and near-misses, same format.

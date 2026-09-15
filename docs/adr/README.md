@@ -1,6 +1,6 @@
 # 🗂️ Aegis Architecture Decision Records
 
-> **Status:** Infrastructure set up — decisions pending documentation.
+> **Status:** Active — 10 decisions catalogued (9 documented, 1 pending).
 > The canonical template and curated examples live in the
 > [Design-Dungeons playbook](https://github.com/pd241008/Design-Dungeons)
 > (`01-documentation/adrs/`).
@@ -30,16 +30,17 @@ template is kept — the playbook is the source of truth.
 | :- | :--- | :--- | :--- |
 | ADR-001 | Edge ring-buffer "black box" (60s window, flush-on-anomaly) | Decided | [ADR-001](./ADR-001-ring-buffer-black-box.md) |
 | ADR-002 | gRPC + Protobuf (proto3) communication contract | Decided | [ADR-002](./ADR-002-grpc-protobuf-contract.md) |
-| ADR-003 | Twisted: Go sentinel + Scala/Akka brain split | Proposed | _to write_ |
-| ADR-004 | Actor-per-sentinel ingestion with backpressure (`SLOW_DOWN`/`RESUME`) | Proposed | _to write_ |
-| ADR-005 | Rolling z-score anomaly detection (2.5σ WARNING / 4.0σ CRITICAL) with cooldown | Proposed | _to write_ |
-| ADR-006 | Sliding-window multi-agent correlation into incidents | Proposed | _to write_ |
-| ADR-007 | Flat-file persistence (agent spool + brain stores) over DB | Proposed | _to write_ |
-| ADR-008 | RAG briefing pipeline: hash-embed → in-memory vector store → rule-based LLM → notifier | Proposed | _to write_ |
-| ADR-009 | Backend templated on Design-Dungeons `backend-template.md` | Proposed | _to write_ |
+| ADR-003 | Go sentinel + Scala brain split over the gRPC contract | Decided | [ADR-003](./ADR-003-go-sentinel-scala-brain-split.md) |
+| ADR-004 | Per-sentinel state with rate-based backpressure (`SLOW_DOWN`/`RESUME`) | Decided | [ADR-004](./ADR-004-per-sentinel-state-rate-backpressure.md) |
+| ADR-005 | Rolling z-score anomaly detection (2.5σ WARNING / 4.0σ CRITICAL) with cooldown | Decided | [ADR-005](./ADR-005-rolling-z-score-anomaly-detection.md) |
+| ADR-006 | Sliding-window multi-agent correlation into incidents | Decided | [ADR-006](./ADR-006-sliding-window-incident-correlation.md) |
+| ADR-007 | Flat-file persistence (agent spool + brain stores) over DB | Decided | [ADR-007](./ADR-007-flat-file-persistence.md) |
+| ADR-008 | RAG briefing pipeline: deterministic defaults behind pluggable interfaces | Decided | [ADR-008](./ADR-008-rag-briefing-deterministic-defaults.md) |
+| ADR-009 | Agent-side local analytics: edge triggers + backpressure honesty | Decided | [ADR-009](./ADR-009-agent-local-analytics-edge-detection.md) |
 | ADR-010 | Zero-dep static dashboard served by the brain at :9091 | Decided | [ADR-010](./ADR-010-static-dashboard.md) |
 
 > [!NOTE]
-> Every row is a **decision that already exists in the code** (see `agent/`,
-> `cluster/`, `proto/`). Rows marked `Proposed` are retroactive backfill — write
-> them in dependency order (ADR-004 before ADR-005/006, ADR-007 before ADR-008).
+> ADR-003..009 were retroactively backfilled in September 2026: every row is
+> a **decision that already exists in the code** (see `agent/`, `cluster/`,
+> `proto/`). ADR-001's flush-on-anomaly trigger is now fed by the edge
+> detector (ADR-009) as well as the brain's z-score detector (ADR-005).

@@ -31,7 +31,16 @@ object Main {
     val incidentStore = IncidentStore(incidentDir)
     val incidentBriefing = new IncidentBriefingService(llm, incidentStore, notifier)
     val correlation = new CorrelationEngine(corrMinAgents, corrWindowMs * 1_000_000L, 2000L)
-    val api = new HttpApi(embedder, vectorStore, briefingStore, incidentStore, httpPort, Paths.get(webRoot))
+
+    // Rebuild the in-memory retrieval index from persisted windows. The
+    // vector store is in-memory by design (ADR-008); without this pass a
+    // restart would silently empty retrieval.
+    val reindexer = new StartupReindexer(store, indexer)
+    val reindex: () => Int = () => reindexer.reindexAll()
+    val reindexed = reindexer.reindexAll()
+    println(s"Startup reindex complete: $reindexed telemetry entries searchable")
+
+    val api = new HttpApi(embedder, vectorStore, briefingStore, incidentStore, httpPort, Paths.get(webRoot), reindex)
 
     val server = ServerBuilder
       .forPort(port)

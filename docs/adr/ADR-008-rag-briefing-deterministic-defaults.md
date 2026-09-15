@@ -1,0 +1,72 @@
+# 📜 ADR-008: RAG Briefing Pipeline with Deterministic Defaults
+
+> **Pattern:** pluggable interface + honest zero-dependency default.
+> Retroactive backfill: implemented in Phase 4B/4C (commits `31c1f12`,
+> `4be6569`, `afcf592`, `166d1c0`).
+
+> **Status:** `Decided`
+> **Date:** `August 2026` (code), `September 2026` (documented)
+
+---
+
+## 🌎 Context
+
+When an anomaly fires, Aegis promises a "diagnostic briefing" — what
+happened, to whom, and with what context. The pipeline shape was decided
+early: translate raw telemetry to text, embed, index into a vector store,
+retrieve similar history, prompt, generate, persist, notify. Every one of
+those stages needs an implementation, and the tempting options (a real LLM
+API, a real embedding model, a real vector DB) all add external dependencies
+to a system whose pipeline was still being validated end-to-end.
+
+## 🛤️ Options Considered
+
+1. **Real APIs from day one** (OpenAI embeddings + GPT, Pinecone/Qdrant) —
+   best quality, but keys, cost, network flakiness and vendor coupling in
+   the critical path while the pipeline shape itself is unproven.
+2. **Deterministic defaults behind interfaces:** `HashEmbedder` (bag-of-
+   words, L2-normalized, 256-dim), `RuleBasedLlm` (template-driven
+   briefings), in-memory cosine `VectorStore`, `LogNotifier`.
+3. **No retrieval at all** — briefings generated purely from the live
+   window, giving up the "similar past events" context entirely.
+
+---
+
+## 🎯 Decision
+
+> [!IMPORTANT]
+> **Ship the full RAG *shape* with deterministic, zero-dependency default
+> implementations behind small interfaces (`Embedder`, `Llm`, `VectorStore`,
+> `Notifier`); swap in real models/stores without touching pipeline code.**
+
+## 🧠 Reasoning
+
+The risk in Phase 4 was the *pipeline* (does flush → translate → embed →
+retrieve → prompt → generate → persist → notify hold together and stay
+testable?), not generation quality. Deterministic defaults make every stage
+unit-testable and make the CI e2e check hermetic — no API keys, no network.
+Because the interfaces are narrow (embed text → vector; prompt → text), the
+upgrade path is a constructor change in `Main`, not a refactor. The honest
+trade: `RuleBasedLlm` briefings are templated summaries, not reasoning, and
+`HashEmbedder` retrieves lexical overlap, not semantics — both are
+documented as defaults, not features.
+
+> [!NOTE]
+> **The in-memory `VectorStore` is rebuilt from persisted windows at brain
+> startup (`StartupReindexer`) — an in-memory index over on-disk truth.**
+> Without that pass, every restart would silently empty retrieval.
+
+## ⚖️ Consequences
+
+- **Good:** 🟢 Hermetic tests and CI; zero vendor coupling; retrieval,
+  briefing and delivery quality improve independently by swapping one
+  implementation each.
+- **Bad:** 🔴 Briefings are template prose, not analysis — the "LLM-driven"
+  headline in early docs overstates the default; cosine-over-hash embeddings
+  miss paraphrases; reindexing on startup is O(all windows).
+
+## 🔄 Revisit When
+
+Briefing quality becomes a user-facing complaint (swap `RuleBasedLlm` for a
+real model behind the same interface), or the persisted-window corpus
+outgrows exact cosine search (swap `VectorStore` for Qdrant/pgvector).

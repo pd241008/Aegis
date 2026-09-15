@@ -15,6 +15,9 @@ import (
 type Scraper struct {
 	scrapeInterval time.Duration
 	procPath       string
+	lastBusy       float64
+	lastTotal      float64
+	haveLast       bool
 }
 
 func New(interval time.Duration) *Scraper {
@@ -59,6 +62,10 @@ func (s *Scraper) ScrapeSyscalls(pid int64) []*telemetryv1.SyscallPayload {
 	return events
 }
 
+// readCPUUsage returns CPU busy percent as a delta over the scrape
+// interval. /proc/stat counters are cumulative since boot, so the ratio
+// must be computed between consecutive samples — otherwise the z-score
+// detector on the Brain sees a near-constant signal.
 func (s *Scraper) readCPUUsage() float64 {
 	statPath := filepath.Join(s.procPath, "stat")
 	f, err := os.Open(statPath)
@@ -68,20 +75,35 @@ func (s *Scraper) readCPUUsage() float64 {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	if scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) >= 5 {
-			user, _ := strconv.ParseFloat(fields[1], 64)
-			nice, _ := strconv.ParseFloat(fields[2], 64)
-			system, _ := strconv.ParseFloat(fields[3], 64)
-			idle, _ := strconv.ParseFloat(fields[4], 64)
-			total := user + nice + system + idle
-			if total > 0 {
-				return ((user + nice + system) / total) * 100
-			}
-		}
+	if !scanner.Scan() {
+		return 0
 	}
-	return 0
+	fields := strings.Fields(scanner.Text())
+	if len(fields) < 5 {
+		return 0
+	}
+	user, _ := strconv.ParseFloat(fields[1], 64)
+	nice, _ := strconv.ParseFloat(fields[2], 64)
+	system, _ := strconv.ParseFloat(fields[3], 64)
+	idle, _ := strconv.ParseFloat(fields[4], 64)
+	busy := user + nice + system
+	total := busy + idle
+
+	if !s.haveLast || total <= s.lastTotal {
+		// First sample (or counters reset): seed the delta baseline and
+		// report the lifetime ratio once so the gauge is never negative.
+		s.lastBusy, s.lastTotal, s.haveLast = busy, total, true
+		if total > 0 {
+			return (busy / total) * 100
+		}
+		return 0
+	}
+	dBusy, dTotal := busy-s.lastBusy, total-s.lastTotal
+	s.lastBusy, s.lastTotal = busy, total
+	if dTotal <= 0 {
+		return 0
+	}
+	return (dBusy / dTotal) * 100
 }
 
 func (s *Scraper) readMemoryUsage() float64 {
