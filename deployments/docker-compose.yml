@@ -18,6 +18,7 @@ services:
       context: ..
       dockerfile: Dockerfile.cluster
     container_name: aegis-brain
+    restart: unless-stopped
     environment:
       AEGIS_BRAIN_PORT: "9090"
       AEGIS_HTTP_PORT: "9091"
@@ -45,10 +46,17 @@ services:
       context: ..
       dockerfile: Dockerfile.agent
     container_name: aegis-sentinel-1
+    restart: unless-stopped
     environment:
       AEGIS_BRAIN_ADDR: brain:9090
       AEGIS_AGENT_ID: sentinel-001
       AEGIS_PERSIST_DIR: /data/persist
+      # Anomaly detection: defaults are production-grade (95/90, streak of 3).
+      # CI/smoke overrides make a flush deterministically fire so the
+      # e2e check can exercise retrieval, briefings and incidents.
+      AEGIS_CPU_ANOMALY_THRESHOLD: "${AEGIS_SMOKE_CPU_THRESHOLD:-95}"
+      AEGIS_MEM_ANOMALY_THRESHOLD: "${AEGIS_SMOKE_MEM_THRESHOLD:-90}"
+      AEGIS_ANOMALY_MIN_CONSECUTIVE: "${AEGIS_SMOKE_MIN_CONSECUTIVE:-3}"
     volumes:
       - aegis-sentinel-1-persist:/data/persist
       - /proc:/proc:ro
@@ -66,10 +74,14 @@ services:
       context: ..
       dockerfile: Dockerfile.agent
     container_name: aegis-sentinel-2
+    restart: unless-stopped
     environment:
       AEGIS_BRAIN_ADDR: brain:9090
       AEGIS_AGENT_ID: sentinel-002
       AEGIS_PERSIST_DIR: /data/persist
+      AEGIS_CPU_ANOMALY_THRESHOLD: "${AEGIS_SMOKE_CPU_THRESHOLD:-95}"
+      AEGIS_MEM_ANOMALY_THRESHOLD: "${AEGIS_SMOKE_MEM_THRESHOLD:-90}"
+      AEGIS_ANOMALY_MIN_CONSECUTIVE: "${AEGIS_SMOKE_MIN_CONSECUTIVE:-3}"
     volumes:
       - aegis-sentinel-2-persist:/data/persist
       - /proc:/proc:ro
