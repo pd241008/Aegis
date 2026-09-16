@@ -27,6 +27,12 @@ services:
       AEGIS_INCIDENT_DIR: /data/incidents
       AEGIS_CORR_MIN_AGENTS: "${AEGIS_CORR_MIN_AGENTS:-2}"
       AEGIS_CORR_WINDOW_MS: "10000"
+      # API-backed briefings (ADR-011); blank/unset => rule-based fallback (ADR-008)
+      AEGIS_LLM_PROVIDER: "${AEGIS_LLM_PROVIDER:-}"
+      AEGIS_LLM_API_KEY: "${AEGIS_LLM_API_KEY:-}"
+      AEGIS_LLM_MODEL: "${AEGIS_LLM_MODEL:-gpt-4o-mini}"
+      AEGIS_LLM_BASE_URL: "${AEGIS_LLM_BASE_URL:-}"
+      AEGIS_LLM_TIMEOUT_MS: "${AEGIS_LLM_TIMEOUT_MS:-30000}"
     ports:
       - "9090:9090"
       - "9091:9091"

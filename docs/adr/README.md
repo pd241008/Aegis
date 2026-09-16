@@ -1,6 +1,6 @@
 # 🗂️ Aegis Architecture Decision Records
 
-> **Status:** Active — 10 decisions catalogued (9 documented, 1 pending).
+> **Status:** Active — 11 decisions catalogued (10 documented, 1 pending).
 > The canonical template and curated examples live in the
 > [Design-Dungeons playbook](https://github.com/pd241008/Design-Dungeons)
 > (`01-documentation/adrs/`).
@@ -38,9 +38,12 @@ template is kept — the playbook is the source of truth.
 | ADR-008 | RAG briefing pipeline: deterministic defaults behind pluggable interfaces | Decided | [ADR-008](./ADR-008-rag-briefing-deterministic-defaults.md) |
 | ADR-009 | Agent-side local analytics: edge triggers + backpressure honesty | Decided | [ADR-009](./ADR-009-agent-local-analytics-edge-detection.md) |
 | ADR-010 | Zero-dep static dashboard served by the brain at :9091 | Decided | [ADR-010](./ADR-010-static-dashboard.md) |
+| ADR-011 | OpenAI-compatible API-backed briefings with deterministic fallback | Decided | [ADR-011](./ADR-011-openai-compatible-api-backed-briefings.md) |
 
 > [!NOTE]
 > ADR-003..009 were retroactively backfilled in September 2026: every row is
 > a **decision that already exists in the code** (see `agent/`, `cluster/`,
 > `proto/`). ADR-001's flush-on-anomaly trigger is now fed by the edge
 > detector (ADR-009) as well as the brain's z-score detector (ADR-005).
+> ADR-011 (September 2026) resolves the deferred upgrade from ADR-008:
+> `RuleBasedLlm` is now the *fallback*, not the only briefing source.
