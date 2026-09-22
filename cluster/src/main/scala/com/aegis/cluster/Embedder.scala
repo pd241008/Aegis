@@ -8,7 +8,15 @@ package com.aegis.cluster
   * a bag-of-words feature-hashing vector, L2-normalized.
   */
 trait Embedder {
+
   def embed(text: String): Array[Double]
+
+  /** Embeds a batch of texts in order; index i of the result corresponds
+    * to input i. Batch-capable implementations (e.g. the OpenAI-compatible
+    * embedder) override this to amortize transport cost; the default
+    * delegates to [[embed]] per text.
+    */
+  def embedAll(texts: Seq[String]): Seq[Array[Double]] = texts.map(embed)
 }
 
 final class HashEmbedder(dims: Int = 256) extends Embedder {

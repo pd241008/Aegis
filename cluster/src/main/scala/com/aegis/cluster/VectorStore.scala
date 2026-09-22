@@ -33,19 +33,35 @@ object SearchHit {
   *
   * Sufficient for the RAG foundation; a production deployment swaps in
   * a dedicated ANN index (FAISS/Qdrant/pgvector) behind the same API.
+  *
+  * All vectors in the store must share one dimensionality: cosine over
+  * mismatched dims would silently compare only the overlapping prefix.
+  * A mismatch is rejected at write time (fail-fast on config error) and
+  * guarded at read time so a stale store can never crash a query.
   */
 final class VectorStore {
   private val docs = TrieMap[String, (Array[Double], String, Map[String, String])]()
 
   def index(id: String, vector: Array[Double], text: String, metadata: Map[String, String]): Unit =
+    vectorDimension.foreach { expected =>
+      if vector.length != expected then
+        throw new IllegalArgumentException(
+          s"vector dimension mismatch: store holds $expected-dim vectors, got ${vector.length} (id=$id)"
+        )
+    }
     docs(id) = (vector, text, metadata)
+
+  /** Dimensionality of the first indexed vector, once any exist. */
+  def vectorDimension: Option[Int] = docs.values.headOption.map(_._1.length)
 
   def search(query: Array[Double], topK: Int, excludeWindowStart: Option[Long] = None): Seq[SearchHit] =
     docs.toSeq
       .filterNot { case (_, (_, _, meta)) =>
         meta.get("window_start").flatMap(_.toLongOption).exists(ws => excludeWindowStart.contains(ws))
       }
-      .map { case (id, (vec, text, meta)) => SearchHit(id, cosine(query, vec), text, meta) }
+      .collect { case (id, (vec, text, meta)) if vec.length == query.length =>
+        SearchHit(id, cosine(query, vec), text, meta)
+      }
       .sortBy(-_.score)
       .take(topK)
 

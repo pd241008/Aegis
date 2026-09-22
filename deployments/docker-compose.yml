@@ -33,6 +33,13 @@ services:
       AEGIS_LLM_MODEL: "${AEGIS_LLM_MODEL:-gpt-4o-mini}"
       AEGIS_LLM_BASE_URL: "${AEGIS_LLM_BASE_URL:-}"
       AEGIS_LLM_TIMEOUT_MS: "${AEGIS_LLM_TIMEOUT_MS:-30000}"
+      # API-backed embeddings for retrieval (ADR-012); blank/unset => hash embeddings
+      AEGIS_EMBED_PROVIDER: "${AEGIS_EMBED_PROVIDER:-}"
+      AEGIS_EMBED_API_KEY: "${AEGIS_EMBED_API_KEY:-}"
+      AEGIS_EMBED_MODEL: "${AEGIS_EMBED_MODEL:-text-embedding-3-small}"
+      AEGIS_EMBED_BASE_URL: "${AEGIS_EMBED_BASE_URL:-}"
+      AEGIS_EMBED_TIMEOUT_MS: "${AEGIS_EMBED_TIMEOUT_MS:-30000}"
+      AEGIS_EMBED_DIMS: "${AEGIS_EMBED_DIMS:-}"
     ports:
       - "9090:9090"
       - "9091:9091"
