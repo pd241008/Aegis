@@ -96,7 +96,16 @@ final class HttpApi(
 
       val body =
         if (q.trim.isEmpty) "[]"
-        else store.search(embedder.embed(q), topK).map(_.toJson).mkString("[", ",", "]")
+        else
+          try
+            store.search(embedder.embed(q), topK).map(_.toJson).mkString("[", ",", "]")
+          catch {
+            // e.g. API-backed embeddings unreachable and no fallback store:
+            // a failed query should not surface as HTTP 500 stack spam.
+            case e: EmbedderUnavailableException =>
+              System.err.println(s"[HttpApi] retrieval query failed: ${e.getMessage}")
+              "[]"
+          }
       respond(exchange, 200, body)
     } catch {
       case t: Throwable => respondError(exchange, t)
