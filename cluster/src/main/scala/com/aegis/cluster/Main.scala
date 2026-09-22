@@ -17,7 +17,7 @@ object Main {
     val corrWindowMs = sys.env.get("AEGIS_CORR_WINDOW_MS").flatMap(_.toLongOption).getOrElse(10000L)
     val corrMinAgents = sys.env.get("AEGIS_CORR_MIN_AGENTS").flatMap(_.toIntOption).getOrElse(2)
 
-    val embedder: Embedder = new HashEmbedder()
+    val embedder: Embedder = EmbedderFactory.fromEnv()
     val vectorStore = new VectorStore()
     val store = BufferStore(bufferDir)
     val indexer = new RetrievalIndexer(embedder, vectorStore)
